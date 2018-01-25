@@ -1,0 +1,14 @@
+{
+
+    "agentId": "TransactiveAgent",
+    "hassConfigPath":"/home/yingying/Desktop/home-assistant/config/configuration.yaml",
+    "device_list":["AC1","AC2","WH1"],
+    "url":"http://130.20.92.139:8123/api/",
+    "urlPass":"NULL",
+    "friendly_name":"Transactive Home",
+    "state" : "on",
+    "request":"post",
+    "message": "hello"
+ 
+}
+
