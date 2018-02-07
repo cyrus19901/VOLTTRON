@@ -1,45 +1,3 @@
-# 
-# Copyright 2017 , UT-Battelle, LLC
-# All rights reserved
-# [Home Assistant- VOLTTRON Integration, Version 1.0]
-# OPEN SOURCE LICENSE (Permissive)
-# 
-# Subject to the conditions of this License, UT-Battelle, LLC (the “Licensor”)
-# hereby grants, free of charge, to any person (the “Licensee”) obtaining a copy
-# of this software and associated documentation files (the "Software"), a perpetual,
-# worldwide, non-exclusive, no-charge, royalty-free, irrevocable copyright license 
-# to use, copy, modify, merge, publish, distribute, and/or sublicense copies of the
-#  Software.
-# 
-# 1. Redistributions of Software must retain the above open source license grant, 
-#    copyright and license notices, this list of conditions, and the disclaimer listed
-#    below.  Changes or modifications to, or derivative works of the Software must be
-#    noted with comments and the contributor and organization’s name.
-# 
-# 2. Neither the names of Licensor, the Department of Energy, or their employees may
-#    be used to endorse or promote products derived from this Software without their
-#    specific prior written permission.
-# 
-# 3. If the Software is protected by a proprietary trademark owned by Licensor or the
-#    Department of Energy, then derivative works of the Software may not be distributed
-#    using the trademark without the prior written approval of the trademark owner. 
-#     
-# 
-# 
-# ****************************************************************************************************************
-# DISCLAIMER
-# 
-# UT-Battelle, LLC AND THE GOVERNMENT MAKE NO REPRESENTATIONS AND DISCLAIM ALL WARRANTIES,
-# BOTH EXPRESSED AND IMPLIED.  THERE ARE NO EXPRESS OR IMPLIED WARRANTIES OF MERCHANTABILITY
-# OR FITNESS FOR A PARTICULAR PURPOSE, OR THAT THE USE OF THE SOFTWARE WILL NOT INFRINGE ANY
-# PATENT, COPYRIGHT, TRADEMARK, OR OTHER PROPRIETARY RIGHTS, OR THAT THE SOFTWARE WILL  
-# ACCOMPLISH THE INTENDED RESULTS OR THAT THE SOFTWARE OR ITS USE WILL NOT RESULT IN INJURY
-# OR DAMAGE.  The user assumes responsibility for all liabilities, penalties, fines, claims,
-# causes of action, and costs and expenses, caused by, resulting from or arising out of, in
-# whole or in part the use, storage or disposal of the SOFTWARE.
-# 
-# ****************************************************************************************************************
-#
 
 import logging
 import sys
@@ -47,7 +5,7 @@ import json
 import requests
 from csv import DictReader
 from StringIO import StringIO
-
+from requests.auth import HTTPBasicAuth
 from volttron.platform.vip.agent import Agent, Core, PubSub
 from volttron.platform.agent import utils
 from master_driver.interfaces import BaseInterface, BasicRevert, BaseRegister
@@ -83,6 +41,9 @@ class Interface(BasicRevert, BaseInterface):
     def configure(self, config_dict, registry_config_str=''):
         
         self.url = config_dict['device_address']
+	self.password = config_dict['password']
+	print("================================")
+	#print(self.password)
         self.hassClimate = HASSClimate(self.url)
         self.GetData()
         self.register_components_information()
@@ -95,10 +56,11 @@ class Interface(BasicRevert, BaseInterface):
             from Home Assistant API
         '''
         urlStates = self.url+'states'
-        
+#	print("=================================")        
         try:
             
-            self.data = requests.get(urlStates).json()
+            self.data = requests.get(urlStates, auth= HTTPBasicAuth('homeassistant',self.password)).json()
+	    #print (self.data)
                     
         except requests.exceptions.RequestException as e:
             print(e)        
@@ -136,7 +98,7 @@ class Interface(BasicRevert, BaseInterface):
                             registers data about the climate device with entity ID
                         '''
                         msg =  entry['attributes']
-                        climatePointName = 'climate#' + entityId + '#'
+                        climatePointName = 'climate/' + entityId + '/'
                         
                         for key,value in msg.items():
                             
@@ -191,7 +153,7 @@ class Interface(BasicRevert, BaseInterface):
             returns the value for the point_name
         '''
         
-        pointNameInfo = point_name.split('#')
+        pointNameInfo = point_name.split('/')
         if(len(pointNameInfo) < 3):
             _log.error("invalid point_name format")
             return 
@@ -255,7 +217,7 @@ class Interface(BasicRevert, BaseInterface):
             sets the value for the point_name
         '''
         
-        pointNameInfo = point_name.split('#')
+        pointNameInfo = point_name.split('/')
         if(len(pointNameInfo) < 3):
             _log.error("invalid point_name format")
             return 
@@ -284,19 +246,19 @@ class Interface(BasicRevert, BaseInterface):
                 self.hassClimate.SetOperationMode(entityId, value)
                  
             elif property == "temperature":
-                pointNamePrefix = pointNameInfo[0] + '#' + pointNameInfo[1] + '#'
+                pointNamePrefix = pointNameInfo[0] + '/' + pointNameInfo[1] + '/'
                 operation_mode = self.get_point(pointNamePrefix + 'operation_mode')
                 self.hassClimate.SetTargetTemperature(entityId, value, operation_mode)
                 return str(value)
             
             elif property == "target_temp_low":
-                pointNamePrefix = pointNameInfo[0] + '#' + pointNameInfo[1] + '#'
+                pointNamePrefix = pointNameInfo[0] + '/' + pointNameInfo[1] + '/'
                 operation_mode = self.get_point(pointNamePrefix + 'operation_mode')
                 self.hassClimate.SetSetPointLow(entityId, value, operation_mode)
                 return str(value)
             
             elif property == "target_temp_high":
-                pointNamePrefix = pointNameInfo[0] + '#' + pointNameInfo[1] + '#'
+                pointNamePrefix = pointNameInfo[0] + '/' + pointNameInfo[1] + '/'
                 operation_mode = self.get_point(pointNamePrefix + 'operation_mode')
                 self.hassClimate.SetSetPointHigh(entityId, value, operation_mode)
                 return str(value)   
@@ -336,7 +298,7 @@ class HASSClimate(object):
         try:   
             jsonMsg = json.dumps({"entity_id" : entityId, "temperature": targetTemp, "operation_mode":  opMode})
             
-            header = {'Content-Type': 'application/json'}
+            header = {'Content-Type': 'application/json','x-ha-access':self.password}
             
             requests.post(urlServices, data = jsonMsg, headers = header)
             
@@ -358,7 +320,7 @@ class HASSClimate(object):
         try:   
             jsonMsg = json.dumps({"entity_id" : entityId, "target_temp_low":setPointLow, "operation_mode":  opMode})
             
-            header = {'Content-Type': 'application/json'}
+            header = {'Content-Type': 'application/json', 'x-ha-access':self.password}
             
             requests.post(urlServices, data = jsonMsg, headers = header)
             
@@ -380,7 +342,7 @@ class HASSClimate(object):
         try:   
             jsonMsg = json.dumps({"entity_id" : entityId, "target_temp_high": setpointHigh, "operation_mode":  opMode})
             
-            header = {'Content-Type': 'application/json'}
+            header = {'Content-Type': 'application/json', 'x-ha-access':self.password}
             
             requests.post(urlServices, data = jsonMsg, headers = header)
             
@@ -403,7 +365,7 @@ class HASSClimate(object):
             
             jsonMsg = json.dumps({"entity_id" : entityId, "fan": fanMode})
             
-            header = {'Content-Type': 'application/json'}
+            header = {'Content-Type': 'application/json', 'x-ha-access':self.password}
             
             requests.post(urlServices, data = jsonMsg, headers = header)
 
@@ -426,7 +388,7 @@ class HASSClimate(object):
             
             jsonMsg = json.dumps({"entity_id" : entityId, "operation_mode": opMode})
             
-            header = {'Content-Type': 'application/json'}
+            header = {'Content-Type': 'application/json', 'x-ha-access':self.password}
             
             requests.post(urlServices, data = jsonMsg, headers = header)
             
@@ -449,7 +411,7 @@ class HASSClimate(object):
             
             jsonMsg = json.dumps({"entity_id" : entityId, "aux_heat": auxHeatOn})
             
-            header = {'Content-Type': 'application/json'}
+            header = {'Content-Type': 'application/json', 'x-ha-access':self.password}
             
             requests.post(urlServices, data = jsonMsg, headers = header)
             
@@ -472,7 +434,7 @@ class HASSClimate(object):
             
             jsonMsg = json.dumps({"entity_id" : entityId, "away_mode": awayMode})
             
-            header = {'Content-Type': 'application/json'}
+            header = {'Content-Type': 'application/json', 'x-ha-access':self.password}
             
             requests.post(urlServices, data = jsonMsg, headers = header)
             
@@ -495,7 +457,7 @@ class HASSClimate(object):
             
             jsonMsg = json.dumps({"entity_id" : entityId, "humidity": humidityValue})
             
-            header = {'Content-Type': 'application/json'}
+            header = {'Content-Type': 'application/json', 'x-ha-access':self.password}
             
             requests.post(urlServices, data = jsonMsg, headers = header)
             
@@ -518,7 +480,7 @@ class HASSClimate(object):
             
             jsonMsg = json.dumps({"entity_id" : entityId, "swing_mode": swingMode})
             
-            header = {'Content-Type': 'application/json'}
+            header = {'Content-Type': 'application/json', 'x-ha-access':self.password}
             
             requests.post(urlServices, data = jsonMsg, headers = header)
             
