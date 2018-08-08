@@ -1,0 +1,5 @@
+{
+"agentid":"ksi_agent",
+"pub_sign":"/ksi_sign/signed_data",
+"pub_verify":"/ksi_verify/verified_data"
+}

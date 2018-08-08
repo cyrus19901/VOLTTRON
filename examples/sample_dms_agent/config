@@ -1,0 +1,6 @@
+{
+"agentid":"dms_agent",
+"pub_signing":"devices/fake-campus/fake-building/fake-device/all",
+"pub_period":30,
+"pub_archive_data":"/historian/archive_data"
+}
