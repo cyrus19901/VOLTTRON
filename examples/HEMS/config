@@ -1,0 +1,20 @@
+{
+	"agentid": "HEMS-DR",
+	"tf": 24,
+	"ddt": 0.0083,
+	"Dtimestamps": 2880,
+	"Dtimes": 2880,
+	"mdt": 0.083,
+	"Mtimes": 288,
+	"hr_stop": 18,
+	"uncontrolled": 0,
+	"hr_start": 12,
+	"Q_lim": 4000,
+	"param": {
+		"Tmin": 66,
+		"Tmax": 78,
+		"Tdesired": 70,
+		"ratio": 5
+	}
+
+}
