@@ -44,7 +44,7 @@ def AC_Temp_control(Dtemp_current,A_etp,B_etp_on,B_etp_off,halfband,T_set,Dstatu
             Dtemp_next= Dtemp_current
 
             sub_ddt = 1/3600
-            for t in np.arange(sub_ddt,ddt+sub_ddt, sub_ddt):
+            for t in np.arange(sub_ddt,ddt+sub_ddt,sub_ddt):
                 if Dstatus_next == 0:
                     Dtemp_next = Dtemp_next + (A_etp * Dtemp_next + B_etp_off) * sub_ddt
                     if (Dtemp_next >= T_set+halfband):

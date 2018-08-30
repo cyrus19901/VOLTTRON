@@ -13,7 +13,7 @@ from market_clear_ideal_accurate_1AC import market_clear_ideal_accurate_1AC
 from AC_Temp_control import AC_Temp_control
 from AC_Tset_control_ideal import AC_Tset_control_ideal
 from AC_Status_update import AC_Status_update
-import matplotlib.pyplot as plt
+
 
 para_AC_dn = {}
 values = {'a', 'b', 'c', 'd', 'e', 'f'}
@@ -168,11 +168,11 @@ for number in np.arange(1, 2880, 1):
 
     if (((number-1) % (mdt / ddt)) == 0):
 
-        im = math.floor((number-1) / mdt * ddt)
-        # print(im)
+        im = int(math.floor((number-1) / mdt * ddt))
+        print(im)
         P_avg[im] = 0.15
         P_sigma[im] = 0.05
-        # print(number)
+        print(number)
         if ((number  >= hr_start / ddt + 1) and (number  <= hr_stop / ddt)):
             values = AC_model_calibration(T_a, T_out, Power, para_AC_dn['COP'], ddt, number-1)
             # print(number)
