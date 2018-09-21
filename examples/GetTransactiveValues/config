@@ -2,12 +2,12 @@
 
     "agentId": "TransactiveAgent",
     "hassConfigPath":"/home/yingying/Desktop/home-assistant/config/configuration.yaml",
-    "device_list":["AC1","AC2","WH1"],
-    "password":"admin",
-    "url":"http://130.20.92.139:8123/api/",
+    "device_list":["Airconditioner","PoolPump","Waterheater"],
+    "password":"pzM7^-K9%Bn=Azb",
+    "url":"http://localhost:8123/api/",
     "urlPass":"NULL",
     "friendly_name":"Transactive Home",
-    "state" : "on",
+    "state" : "connected_homes",
     "request":"post",
     "message": "hello"
  

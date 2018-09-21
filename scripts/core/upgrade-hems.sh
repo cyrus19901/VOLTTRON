@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
-export SOURCE=/home/yingying/freshcopy/volttron-applications/pnnl/HEMSAgent
-export CONFIG=/home/yingying/freshcopy/volttron-applications/pnnl/HEMSAgent/HEMS_config
+export SOURCE=/home/pi/volttron-applications/pnnl/HEMSAgentNewAgorithm
+export CONFIG=/home/pi/volttron-applications/pnnl/HEMSAgentNewAgorithm/HEMS_config
 
 export TAG=HEMS
 

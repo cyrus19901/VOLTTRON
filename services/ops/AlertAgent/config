@@ -1,12 +1,23 @@
 {
     "group1": {
-        "devices/fakedriver0/all": 10
+        "analysis/": 10
     },
 
-    "device_group": {
-        "devices/fakedriver1/all": {
-            "seconds": 10,
-            "points": ["temperature", "PowerState"]
+    "device_group_TC": {
+        "devices/LabHomes/controlsHome/campbell-TC-B/all": {
+            "seconds": 60,
+            "points": ["S1 Hall Space Sensor", "Battery Voltage", "S4 Master Bathroom Space Sensor", "TC East Bedroom Space","Calibration Under Kitchen Temp",
+			 "TC West Bedroom Space", "WH Inlet City Water", "TC Dining Space", "Calibration Flow", "Duct Supply", "TC Utility Room Space",
+			 "Outside RH Sensor", "S3 Water Heater Closet Space Sensor", "WH Exit Domestic Hot Water", "City Water Inflow Sensor",
+			 "Domestic Hot Water Flow Sensor", "TC Bathroom Space", "S2 Master Bedroom Space Sensor", "Solar Outside Modbus", "Outside Air Temperature RH", "TC Kitchen Space"]
+        }
+    },
+    "device_group_PW": {
+        "devices/LabHomes/controlsHome/campbell-PW-B/all": {
+            "seconds": 60,
+            "points": ["Mains Total Power","Furnace Emergency Heat Total Power",
+			"North East Bedroom 2 Occupancy Power", "Heat Pump Total Power", "North West Bedroom1 Occupancy Power",
+			 "Furnace Fan Total Power", "Master Bedroom Occupancy Power", "Water Heater Total Power", "BattV"]
         }
     }
 }

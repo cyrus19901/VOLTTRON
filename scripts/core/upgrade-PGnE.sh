@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
-export SOURCE=/home/yingying/freshcopy/volttron-applications/pnnl/PGnE
-export CONFIG=/home/yingying/freshcopy/volttron-applications/pnnl/PGnE/config
+export SOURCE=/home/pi/volttron-applications/pnnl/PGnE
+export CONFIG=/home/pi/volttron-applications/pnnl/PGnE/config
 
 export TAG=PGnE
 

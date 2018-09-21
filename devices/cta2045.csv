@@ -1,0 +1,17 @@
+Point Name,Volttron Point Name,Units,Units Details,Writable,Starting Value,Type,Notes
+Heartbeat,Heartbeat,On/Off,On/Off,TRUE,0,boolean,Point for heartbeat toggle
+NetworkStatus,NetworkStatus,Online/Offline,Online/Offline,FALSE,0,string,Network status
+DeviceType,DeviceType,none,none,FALSE,0,int,Device type
+DeviceVendorId,DeviceVendorId,none,none,FALSE,0,string,Device vendor id
+OperationalState,OperationalState,none,none,FALSE,0,int,Operational state
+CustomerOverride,CustomerOverride,none,none,FALSE,0,int,Customer override
+InstantaneousElectricityConsumption,InstantaneousElectricityConsumption,W,W,FALSE,0,float,Instantaneous electricity consumption
+CumulativeElectricityConsumption,CumulativeElectricityConsumption,Wh,Wh,FALSE,0,float,Cumulative electricity consumption
+TotalEnergyStorageCapacity,TotalEnergyStorageCapacity,Wh,Wh,FALSE,0,float,Total energy storage capacity
+PresentEnergyStorageCapacity,PresentEnergyStorageCapacity,Wh,Wh,FALSE,0,float,Present energy storage capacity
+PresentTemperature,PresentTemperature,F,F,FALSE,0,float,Present temperature
+TemperatureOffset,TemperatureOffset,F,F,TRUE,0,int,Temperature offset
+HeatTemperatureSetPoint,HeatTemperatureSetPoint,F,F,TRUE,0,int,Heat temperature setpoint
+CoolTemperatureSetPoint,CoolTemperatureSetPoint,F,F,TRUE,0,int,Cool temperature setpoint
+ThermostatMode,ThermostatMode,none,none,TRUE,0,int,Thermostat mode
+FanMode,FanMode,none,none,TRUE,0,int,Fan mode

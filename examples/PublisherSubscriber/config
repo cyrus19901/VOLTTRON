@@ -1,0 +1,7 @@
+{
+
+    "agentid": "PublisherSubscriber",
+    "message": "hello",
+    "topic": "weather/temperature/all",
+    "building": "controlsHouse"
+}

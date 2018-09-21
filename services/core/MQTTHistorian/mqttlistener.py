@@ -1,7 +1,7 @@
 from paho.mqtt.client import MQTTv311, MQTTv31
 from paho.mqtt.subscribe import callback
 
-PORT = 5000
+PORT = 1883
 PROTOCOL = MQTTv311
 
 # Callback function to print out message topics and payloads

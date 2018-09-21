@@ -1,0 +1,11 @@
+{
+
+    "agentId": "EcobeeAgent",
+    "password":"pzM7^-K9%Bn=Azb",
+    "url":"https://130.20.213.181:8123/api/states/",
+    "urlPass":"NULL",
+    "friendly_name":"Transactive Home",
+    "message": "hello"
+ 
+}
+

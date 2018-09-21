@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
-export SOURCE=/home/yingying/freshcopy/volttron-applications/pnnl/TargetAgent
-export CONFIG=/home/yingying/freshcopy/volttron-applications/pnnl/TargetAgent/config
+export SOURCE=/home/pi/volttron-applications/pnnl/TargetAgent
+export CONFIG=/home/pi/volttron-applications/pnnl/TargetAgent/config
 
 export TAG=TargetAgent
 

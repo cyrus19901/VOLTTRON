@@ -1,3 +1,58 @@
+# -*- coding: utf-8 -*- {{{
+# vim: set fenc=utf-8 ft=python sw=4 ts=4 sts=4 et:
+#
+# Copyright (c) 2016, Battelle Memorial Institute
+# All rights reserved.
+#
+# Redistribution and use in source and binary forms, with or without
+# modification, are permitted provided that the following conditions are met:
+#
+# 1. Redistributions of source code must retain the above copyright notice, this
+#    list of conditions and the following disclaimer.
+# 2. Redistributions in binary form must reproduce the above copyright notice,
+#    this list of conditions and the following disclaimer in the documentation
+#    and/or other materials provided with the distribution.
+#
+# THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND
+# ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
+# WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
+# DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT OWNER OR CONTRIBUTORS BE LIABLE FOR
+# ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES
+# (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
+# LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND
+# ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+# (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
+# SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+#
+# The views and conclusions contained in the software and documentation are those
+# of the authors and should not be interpreted as representing official policies,
+# either expressed or implied, of the FreeBSD Project.
+#
+
+# This material was prepared as an account of work sponsored by an
+# agency of the United States Government.  Neither the United States
+# Government nor the United States Department of Energy, nor Battelle,
+# nor any of their employees, nor any jurisdiction or organization
+# that has cooperated in the development of these materials, makes
+# any warranty, express or implied, or assumes any legal liability
+# or responsibility for the accuracy, completeness, or usefulness or
+# any information, apparatus, product, software, or process disclosed,
+# or represents that its use would not infringe privately owned rights.
+#
+# Reference herein to any specific commercial product, process, or
+# service by trade name, trademark, manufacturer, or otherwise does
+# not necessarily constitute or imply its endorsement, recommendation,
+# r favoring by the United States Government or any agency thereof,
+# or Battelle Memorial Institute. The views and opinions of authors
+# expressed herein do not necessarily state or reflect those of the
+# United States Government or any agency thereof.
+#
+# PACIFIC NORTHWEST NATIONAL LABORATORY
+# operated by BATTELLE for the UNITED STATES DEPARTMENT OF ENERGY
+# under Contract DE-AC05-76RL01830
+
+#}}}
+
 import datetime
 import logging
 import sys
@@ -34,24 +89,24 @@ class GetTransactiveAgent(Agent):
         # self.entityId_transactive_component = self.config['entityID_transactive']
         self.entityId_transactive_component = 'transactive_home.transactive_home'
         self.entityId_connectedDevices_component = 'connected_devices.connected_devices'
-        self.entityId_advancedSettings_component = 'advanced_settings.utility_settings'
+        self.entityId_utilitySettings_component = 'advanced_settings.utility_settings'
         self.entityId_userSettings_component = 'user_settings.device_settings'
         self.entityId_climate_heatpump = 'climate.heatpump'
         self.entityID_wholeHouseEnergy_component = 'whole_house_energy.whole_house_energy'
         self.url = self.config['url']
         self.password = self.config['password']
-        self.data  = []
-        self.data2  = []
+        # self.data  = []
+        # self.data2  = []
         self.new_state = self.config['state']
 
 #Moving some from the transactive agent 
-    @Core.periodic(1)
+    @Core.periodic(5)
     def accessService(self):
 
         urls = [
         self.url+'states/'+ self.entityId_transactive_component,
         self.url+'states/'+ self.entityId_connectedDevices_component,
-        self.url+'states/'+ self.entityId_advancedSettings_component,
+        self.url+'states/'+ self.entityId_utilitySettings_component,
         self.url+'states/'+ self.entityID_wholeHouseEnergy_component,
         self.url+'states/'+ self.entityId_userSettings_component,
         self.url+'states/'+ self.entityId_climate_heatpump
@@ -61,97 +116,92 @@ class GetTransactiveAgent(Agent):
         response = grequests.map(request_data)
         self.dataObject_transactive = json.loads(response[0].text)
         self.dataObject_connected = json.loads(response[1].text)
-        self.dataObject_advanced_settings = json.loads(response[2].text)
+        self.dataObject_utility_settings = json.loads(response[2].text)
         self.dataObject_whole_house_energy = json.loads(response[3].text)
         self.dataObject_user_sett = json.loads(response[4].text)
         self.dataObject_heat_pump = json.loads(response[5].text)
-
-
-        #Peak Period
-        # print(self.dataObject_energyEfficiency_peakPeriod)
-        # self.compensationAcutal=dataObject_energyEfficiency_peakPeriod['attributes']['compensationActual']['value']
-        self.canToggle = self.dataObject_whole_house_energy['attributes']['canToggle']
-        self.ppBenefitEstimateValue=self.dataObject_whole_house_energy['attributes']['ppBenefitEstimate']['value']
-        self.ppBenefitGoalValue=self.dataObject_whole_house_energy['attributes']['ppBenefitGoal']['value']
-        self.ppReductionEstimateValue=self.dataObject_whole_house_energy['attributes']['ppReductionEstimate']['value']
-        self.ppReductionGoalValue=self.dataObject_whole_house_energy['attributes']['ppReductionGoal']['value']
-        self.touBenefitEstimateValue=self.dataObject_whole_house_energy['attributes']['touBenefitEstimate']['value']
-        self.touBenefitGoalValue=self.dataObject_whole_house_energy['attributes']['touBenefitGoal']['value']
-        self.touReductionEstimateValue=self.dataObject_whole_house_energy['attributes']['touReductionEstimate']['value']
-        self.touReductionGoalValue=self.dataObject_whole_house_energy['attributes']['touReductionGoal']['value']
-        self.useAlgorithm = self.dataObject_whole_house_energy['attributes']['useAlgorithm']['value']
-        
-
 
         self.setWillingness()
         self.setEnergyReduction()
         self.sendDeviceList()
         # self.sendDeviceFromHA()
         try:
-            self.vip.pubsub.subscribe(peer='pubsub', prefix='fncs/input/house/', 
+            self.vip.pubsub.subscribe(peer='pubsub', prefix='record/', 
                                      callback=self.on_match_all)
         except:
             _log.debug("Topic Not found for enery_reduction or minimum disutility")
 
+    @PubSub.subscribe('pubsub', 'record/skycentrics/')
     def on_match_all(self, peer, sender, bus,  topic, headers, message):
 
+
+        canToggle = self.dataObject_whole_house_energy['attributes']['canToggle']
+        ppBenefitEstimateValue=self.dataObject_whole_house_energy['attributes']['ppBenefitEstimate']['value']
+        ppBenefitGoalValue=self.dataObject_whole_house_energy['attributes']['ppBenefitGoal']['value']
+        ppReductionEstimateValue=self.dataObject_whole_house_energy['attributes']['ppReductionEstimate']['value']
+        # print(self.dataObject_utility_settings['attributes'])
+        ppReductionGoalValue=self.dataObject_utility_settings['attributes']['energySavings']['value']
+
+        touBenefitEstimateValue=self.dataObject_whole_house_energy['attributes']['touBenefitEstimate']['value']
+        touBenefitGoalValue=self.dataObject_whole_house_energy['attributes']['touBenefitGoal']['value']
+        touReductionEstimateValue=self.dataObject_whole_house_energy['attributes']['touReductionEstimate']['value']
+        touReductionGoalValue=self.dataObject_whole_house_energy['attributes']['touReductionGoal']['value']
+        useAlgorithm = self.dataObject_whole_house_energy['attributes']['useAlgorithm']['value']
+
         if (topic == 'record/skycentrics/energyReduction'):
-            print("============PEAK PERIOD=============================")
-            self.ppReductionEstimateValue=str(float(round(message,2)))
-            print(self.ppReductionEstimateValue)
-
+            # print(message)
+            # print("****************************************")
+            # print(str(round(message[0]['EstimatedEnergyReduction'],2)))
+            ppReductionEstimateValue=str(round(message[0]['EstimatedEnergyReduction'],2))
+            print(ppReductionEstimateValue)
         if (topic == 'record/skycentrics/Compensation'):
-            # print("============ENERGY REDUCTION=============================")
-            self.ppBenefitEstimateValue = "$"+str(float(round(message,2)))
-            # print(self.ppBenefitEstimateValue)
+            # print("****************************************")
+            ppBenefitEstimateValue = "$"+ str(round(message[0]['Compensation'],2))
+            # print(ppBenefitEstimateValue)
+        self.changeWholeHouseEnergy(canToggle,ppBenefitEstimateValue,ppBenefitGoalValue,ppReductionEstimateValue,ppReductionGoalValue,touBenefitEstimateValue,touBenefitGoalValue,touReductionEstimateValue,touReductionGoalValue,useAlgorithm)
 
-        self.changeWholeHouseEnergy(self.canToggle,self.ppBenefitEstimateValue,self.ppBenefitGoalValue,self.ppReductionEstimateValue,self.ppReductionGoalValue,self.touBenefitEstimateValue,self.touBenefitGoalValue,self.touReductionEstimateValue,self.touReductionGoalValue,self.useAlgorithm)
+    # def sendDeviceFromHA(self):
 
-    def sendDeviceFromHA(self):
-
-        devicename =(self.dataObject_heat_pump['attributes']['friendly_name'])
-        pub_topic = 'devices/all/'+ devicename + '/office/skycentrics'
-        now = datetime.datetime.utcnow().isoformat(' ') + 'Z'
-        headers = {headers_mod.TIMESTAMP: now, headers_mod.DATE: now}
-        self.vip.pubsub.publish('pubsub',pub_topic,headers,self.dataObject_heat_pump)         
+    #     devicename =(self.dataObject_heat_pump['attributes']['friendly_name'])
+    #     pub_topic = 'devices/all/'+ devicename + '/office/skycentrics'
+    #     now = datetime.datetime.utcnow().isoformat(' ') + 'Z'
+    #     headers = {headers_mod.TIMESTAMP: now, headers_mod.DATE: now}
+    #     self.vip.pubsub.publish('pubsub',pub_topic,headers,self.dataObject_heat_pump)         
 
     def sendDeviceList(self):   
 
         for value in self.dataObject_user_sett["attributes"]["devices"]:
             settings = self.dataObject_user_sett["attributes"]["devices"][str(value)]["settings"]
             pub_topic = 'house/device/details/'+ value
-
             now = datetime.datetime.utcnow().isoformat(' ') + 'Z'
             headers = {headers_mod.TIMESTAMP: now, headers_mod.DATE: now}
             self.vip.pubsub.publish('pubsub',pub_topic,headers,settings)         
 
     def setWillingness(self):   
-
+        print("in Willingness")
         for value in  self.dataObject_connected["attributes"]["devices"]:
-
-            flexibility = self.dataObject_connected["attributes"]["devices"][str(value)]["flexibility"]
-            if (flexibility == "low"):
-                willingness = 8
-            if (flexibility == "medium"):
-                willingness = 5
-            if (flexibility == "high"):
-                willingness = 2
+            flexibility = self.dataObject_connected["attributes"]["devices"][str(value)]['flexibility']
             pub_topic = 'house/'+ value+'/'+value+'_beta'
-            print("===========================")
             print(pub_topic)
+            print(flexibility)
             now = datetime.datetime.utcnow().isoformat(' ') + 'Z'
             headers = {headers_mod.TIMESTAMP: now, headers_mod.DATE: now}
-            self.vip.pubsub.publish('pubsub',pub_topic,headers,willingness)        
+            self.vip.pubsub.publish('pubsub',pub_topic,headers,flexibility)        
         
-
     def setEnergyReduction(self):   
-
-        energyReduction = float(self.dataObject_advanced_settings['attributes']['energySavings']['value'])
-        pub_topic = 'house/energy_reduction'
-
+        energyReduction = float(self.dataObject_utility_settings['attributes']['energySavings']['value'])
+        energyReductionStartTime = self.dataObject_utility_settings['attributes']['savingsStartTime']['value']
+        energyReductionEndTime = self.dataObject_utility_settings['attributes']['savingsEndTime']['value']
+        pub_topic_value = 'house/energy_reduction_amount'
+        pub_topic_startTime = 'house/energy_reduction_startTime'
+        pub_topic_endTime = 'house/energy_reduction_endTime'
         now = datetime.datetime.utcnow().isoformat(' ') + 'Z'
         headers = {headers_mod.TIMESTAMP: now, headers_mod.DATE: now}
-        self.vip.pubsub.publish('pubsub',pub_topic,headers,energyReduction)         
+        print(energyReduction)
+	print("=============================================")
+        self.vip.pubsub.publish('pubsub',pub_topic_value,headers,energyReduction)
+        self.vip.pubsub.publish('pubsub',pub_topic_startTime,headers,energyReductionStartTime)
+        self.vip.pubsub.publish('pubsub',pub_topic_endTime,headers,energyReductionEndTime)         
 
     def changeWholeHouseEnergy(self,canToggleValue,ppBenefitEstimateValue,ppBenefitGoalValue,ppReductionEstimateValue,ppReductionGoalValue,touBenefitEstimateValue,touBenefitGoalValue,touReductionEstimateValue,touReductionGoalValue,useAlgorithm):
 
@@ -206,51 +256,6 @@ class GetTransactiveAgent(Agent):
             except ValueError:
                     pass
 
-
-    def ChangeTimeOfUseEnergyAndSavings(self,energyReductionActual_timeOfUse,energyReductionEstimate_timeOfUse,energyReductionGoal_timeOfUse,savingsActual,savingsEstimate,savingsGoal,timeOfUseUseAlgorithm):
-
-            if self.entityId_timeOfEnergyUseSaving is None:
-                return
-
-            urlServices = self.url+'states/'+ self.entityId_timeOfEnergyUseSaving
-            try:
-                jsonMsg = json.dumps({
-                        "attributes": {
-                            "energyReductionActual": {
-                                "units": "kwh",
-                                "value": energyReductionActual_timeOfUse
-                            },
-                            "energyReductionEstimate": {
-                                "units": "kwh",
-                                "value": energyReductionEstimate_timeOfUse
-                            },
-                            "energyReductionGoal": {
-                                "units": "kwh",
-                                "value": energyReductionGoal_timeOfUse
-                            },
-                            "friendly_name": "Time of use energy and savings",
-                            "savingsActual": {
-                                "value": savingsActual
-                            },
-                            "savingsEstimate": {
-                                "value": savingsEstimate
-                            },
-                            "savingsGoal": {
-                                "value": savingsGoal
-                            },
-                            "useAlgorithm": {
-                                "value": timeOfUseUseAlgorithm
-                            }
-                        },
-                        "state": self.new_state
-                    })
-                header = {'Content-Type': 'application/json' ,'x-ha-access':self.password}
-                # print(jsonMsg)
-                requests.post(urlServices, data = jsonMsg, headers = header)
-                print("Energy efficiency for peak period has been changed")
-            except ValueError:
-                    pass
-
 def main(argv=sys.argv):
     '''Main method called by the eggsecutable.'''
     try:
@@ -270,3 +275,4 @@ if __name__ == '__main__':
 
    
             
+

@@ -1,0 +1,16 @@
+Point Name,Volttron Point Name,Units,Units Details,Writable,Starting Value,Type,Notes
+Heartbeat,Heartbeat,On/Off,On/Off,TRUE,0,boolean,Point for heartbeat toggle
+NetworkStatus,NetworkStatus,Online/Offline,Online/Offline,FALSE,0,string,Network status
+DeviceFirmwareVersion,DeviceFirmwareVersion,none,none,FALSE,0,string,Device firmware version
+DeviceHardwareVersion,DeviceHardwareVersion,none,none,FALSE,0,string,Device hardware version
+DeviceModel,DeviceModel,none,none,FALSE,0,string,Device model
+DeviceDateCode,DeviceDataCode,none,none,FALSE,0,string,Device data code
+MeterMac,MeterMac,none,none,FALSE,0,string,Meter MAC
+InstantaneousDemand,InstantaneousDemand,kW,kW,FALSE,0,float,Instantaneous demand
+PriceCluster,PriceCluster,Currency,Currency,FALSE,0,float,Price cluster
+PriceTier,PriceTier,none,none,FALSE,0,int,Price tier
+SummationDelivered,SummationDelivered,kW,kW,FALSE,0,float,Summation deliverd
+SummationReceived,SummationReceived,kW,kW,FALSE,0,float,Summation received
+PeakDelivered,PeakDelivered,none,none,FALSE,0,float,Peak delivered
+PeakReceived,PeakReceived,none,none,FALSE,0,float,Peak received
+MessageText,MessageText,none,none,FALSE,0,string,Message text

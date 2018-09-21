@@ -2,8 +2,8 @@
     # AgentWatcher will send an alert if any of the following
     # VIP identities are not running on the platform
     "watchlist": [
-        "platform.driver",
-        "platform.historian"
+        "platform.driver"
+        #"platform.historian"
     ]
 
     # Time to wait between agent running checks

@@ -63,16 +63,18 @@ import time
 import csv
 import gevent
 import grequests
-import pickle
-import gzip
-import cPickle
-import os.path
+from volttron.platform import jsonrpc
 from volttron.platform.vip.agent import Agent, Core, PubSub, compat
 from volttron.platform.agent import utils
+from volttron.platform.agent.known_identities import (
+    VOLTTRON_CENTRAL, VOLTTRON_CENTRAL_PLATFORM, CONTROL, CONFIGURATION_STORE)
 from . import settings
 from volttron.platform.messaging import topics, headers as headers_mod
 from datetime import timedelta
 from calendar import timegm
+from volttron.platform.jsonrpc import (INTERNAL_ERROR, INVALID_PARAMS)
+from volttron.platform.agent.known_identities import (
+    VOLTTRON_CENTRAL, VOLTTRON_CENTRAL_PLATFORM, CONTROL, CONFIGURATION_STORE)
 
 utils.setup_logging()
 _log = logging.getLogger(__name__)
@@ -90,21 +92,14 @@ class TransactiveAgent(Agent):
         self.config = utils.load_config(config_path)
         self.url = self.config['url']
         self.password = self.config['password']
-        self.deviceList = self.config['device_list']
         self.new_state = self.config['state']
+        self.path = '/home/pi/volttron'
         self.deviceDictionary={}
         self.energyPoint={}
         self.powerPoint={}
         self.devicePowerStausesDict ={}
         self.deviceEnergyStausesDict ={}
-        for d in self.deviceList:
-            self.deviceDictionary[d] = []
-            self.devicePowerStausesDict[d] = []
-            self.deviceEnergyStausesDict[d] = []
-            self.energyPoint[d]=[]
-            self.powerPoint[d]=[]
         self.startTime= datetime.datetime.utcnow()
-
         self.future = self.startTime + timedelta(seconds=30,minutes=0)
         self.energyDevicesStatusesDict={'series':{},'times':[],'time-format': 'h:mm a','step': 30}
         self.powerDevicesStatusesDict={'series':{},'times':[],'time-format': 'h:mm a','step':30}
@@ -118,6 +113,7 @@ class TransactiveAgent(Agent):
         self.entityId_datPrivacy_component ='data_privacy.data_privacy'
         self.count=0
         self.energyDict = {'series':[],'times':[]}
+        self.privacy_settings_default = 'no_external'
         cumulative_historical = 0
         cumulative_transactive = 0
         energySeries = {'actual':[],'historical':[],'transactive':[]}
@@ -125,9 +121,145 @@ class TransactiveAgent(Agent):
         energySeries['historical'] = { 'color':'#696969','label':'historical','line-style':'dot','points':[]}
         energySeries['transactive'] = { 'color':'ForestGreen','label':'transactive','line-style':'dash','points':[]}
         self.energyDict['series']= energySeries
+        self.initializeInitialState()
+        self.base_url ="http://52.87.227.27:8080/vc/jsonrpc"
+        self.totalEnergy  = 0
+        self.totalPower = 0
+        
+
+    def executeForwardHistorian(self,uuidForwardHistorian,token,uuidPlatform, method):
+
+        headers = {
+            'Content-Type': 'application/json',
+        }
+
+        payload = {
+             "jsonrpc": "2.0",
+             "method": "platforms.uuid."+uuidPlatform+"."+ method,
+             "params":[uuidForwardHistorian],
+             "authorization": token,
+             "id": '72581-4'
+        }
+        response = requests.post(self.base_url, headers=headers,
+                                 data=json.dumps(payload),verify=False).json()
+        if response:
+            return response
+        else:
+            return "Agent not found"
+
+    def getuuidPlatform(self,token):
+
+        headers = {
+            'Content-Type': 'application/json',
+        }
+
+        payload = {
+             "jsonrpc": "2.0",
+             "method": "list_platforms",
+             "authorization": token,
+             "id": '72581-4'
+        }
+        response = requests.post(self.base_url, headers=headers,
+                                 data=json.dumps(payload),verify=False).json()
+        if response:
+            return response
+        else:
+            return "No Platforms found"
+
+    def getAgentList(self,uuid_platform,method,agent_name,token):
+
+        headers = {
+            'Content-Type': 'application/json',
+        }
+
+        payload = {
+             "jsonrpc": "2.0",
+             "method": "platforms.uuid."+ uuid_platform + "." + method,
+             "authorization": token,
+             "id": '72581-4'
+        }
+        response = requests.post(self.base_url, headers=headers,
+                                 data=json.dumps(payload),verify=False).json()
+        if response:
+            # return response
+            for agent in response['result']:
+                if (agent['identity'] == agent_name):
+                    return(agent['uuid'])
+        else:
+            return agent_name + 'not found'
+
+
+    def authenticationVC(self,username, password):
+        """ Makes use of Send API:
+            https://developers.facebook.com/docs/messenger-platform/send-api-reference
+        """
+        headers = {
+            'Content-Type': 'application/json',
+        }
+        payload = {
+             "jsonrpc": "2.0",
+             "method": "get_authorization",
+             "params": {
+                "username": username,
+                "password": password
+             },
+             "id": '72581-4'
+        }
+        response = requests.post(self.base_url, headers=headers,
+                                 data=json.dumps(payload),verify=False).json()
+        if response:
+            return response
+        else:
+            return "The authentication was a failure "
+
+    def initializeInitialState(self):
         now = datetime.datetime.now()
         future=now
-        urlServices = self.url+'states/'+ self.entityId_connectedDevices_component
+        response = self.apiResponse()
+        dataObject_all = json.loads(response[7].text)
+        try:
+            if (dataObject_all == []):
+                msg = "No data was received from HASS API, Please check the connection to the API and the Agent configuration file"
+                _log.error(msg)
+            else:
+                msg = []
+                self.deviceList = ["A.O.Smith.WH","PoolPump","HVACOutdoor","HVACIndoor"]
+                # for entry in dataObject_all:
+                #     entityId = entry['entity_id']
+                #     if(entityId.startswith("climate.")):
+                #         self.deviceList.append(entityId.split(".")[1])
+        except requests.exceptions.RequestException as e:
+            print(e)   
+
+        for d in self.deviceList:
+            self.deviceDictionary[d] = []
+            self.devicePowerStausesDict[d] = []
+            self.deviceEnergyStausesDict[d] = []
+            self.energyPoint[d]=[]
+            self.powerPoint[d]=[]
+            # Initiate the json in the beginning of the code
+            for device_list in self.deviceList:
+                device_json = {
+                        "name": device_list, 
+                        "flexibility": 0,
+                        "participate": True,
+                        "reset":False
+                        }
+                self.deviceDictionary[device_list]= device_json
+            self.reset_default = False
+            jsonMsg = json.dumps({
+                            "attributes": {
+                                "devices": self.deviceDictionary,
+                                "friendly_name":"Connected Devices",
+                            },
+                            "state": self.new_state
+                        })
+            header = {'Content-Type': 'application/json' ,'x-ha-access':self.password}
+            requests.post(self.url+'states/'+ self.entityId_connectedDevices_component, data = jsonMsg, headers = header)  
+
+        with open(self.path+'/examples/TransactiveAgent/config_devices') as device_file: 
+            device_dictionary = json.load(device_file)
+
         for i in range(1,50):
             minute = timedelta(days=6,seconds=0,microseconds=0)
             future = future + minute
@@ -136,7 +268,7 @@ class TransactiveAgent(Agent):
         for i in range(1,50):
             self.energyDict['series']['actual']['points'].append(None)
 
-        with open('/home/yingying/Desktop/5.0RC/volttron/examples/TransactiveAgent/transactiveagent/greendata-transactive.json') as data_file: 
+        with open(self.path +'/examples/TransactiveAgent/transactiveagent/greendata-transactive.json') as data_file: 
             data_historical = json.load(data_file)
             for i in data_historical:
                 try:
@@ -146,7 +278,7 @@ class TransactiveAgent(Agent):
                      pass
                 continue
 
-        with open('/home/yingying/Desktop/5.0RC/volttron/examples/TransactiveAgent/transactiveagent/greenButtonHistoricalData.json') as data_file:   
+        with open(self.path + '/examples/TransactiveAgent/transactiveagent/greenButtonHistoricalData.json') as data_file:   
             data_transactive = json.load(data_file)
             for i in data_transactive:
                 try:
@@ -156,151 +288,130 @@ class TransactiveAgent(Agent):
                     pass
                 continue
 
+        self.changeUsereSettings(device_dictionary)
+        # self.dataForward()
 
-# Initiate the json in the beginning of the code
-        for device_list in self.deviceList:
-            device_json = {
-                    "name": device_list, 
-                    "energy":0,
-                    "flexibility":"high",
-                    "participate": True,
-                    "power":0,
-                    "reset":False,
-                    "zone_max":1,
-                    "zone_min":0
-                    }
-            self.deviceDictionary[device_list]= device_json
-        self.reset_default = False
-        jsonMsg = json.dumps({
-                        "attributes": {
-                            "devices": self.deviceDictionary,
-                            "friendly_name":"Connected Devices",
-                        },
-                        "state": self.new_state
-                    })
-        header = {'Content-Type': 'application/json' ,'x-ha-access':self.password}
-        requests.post(urlServices, data = jsonMsg, headers = header)  
+    def dataForward(self,dataObject_dataPrivacy):
+        #dataPrivacy -> forward historian 
+        privacy_settings = dataObject_dataPrivacy['attributes']['privacy_setting'] 
+        # print("=====================================")
+        # print(privacy_settings)
+        # print(self.privacy_settings_default)
+        if (privacy_settings != self.privacy_settings_default):
+            authentication_response = self.authenticationVC("admin","admin")
+            token = authentication_response['result']
+            uuid_response = self.getuuidPlatform(token)
+            uuidPlatform = uuid_response['result'][0]['uuid']
+            uuidForwardHistorian = self.getAgentList(uuidPlatform,'list_agents','ForwardHistorian',token)
+            
+            if (privacy_settings == 'allow_control'):
+                self.executeForwardHistorian(uuidForwardHistorian,token,uuidPlatform,"start_agent")
+                self.privacy_settings_default = 'allow_control'
+            if (privacy_settings == 'no_external'):
+                self.executeForwardHistorian(uuidForwardHistorian,token,uuidPlatform,"stop_agent")
+                self.privacy_settings_default = 'no_external'
 
-    @PubSub.subscribe('pubsub', 'devices/all/')
+
+
+    def apiResponse(self):
+
+        urls = [
+            self.url+'states/'+ self.entityId_transactive_component,
+            self.url+'states/'+ self.entityId_connectedDevices_component,
+            self.url+'states/'+ self.entityId_utilitySetting_component,
+            self.url+'states/'+ self.entityId_wholeHouseEnergy_component,
+            self.url+'states/'+ self.entityId_user_settings_component,
+            self.url+'states/'+ self.entityId_extras_component,
+            self.url+'states/'+ self.entityId_datPrivacy_component,
+            self.url+'states'
+        ]
+
+        request_data = (grequests.get(u,headers= {'Content-Type': 'application/json' ,'x-ha-access':self.password}) for u in urls)
+        response = grequests.map(request_data)
+        return response
+
+    @PubSub.subscribe('pubsub', 'devices/Yarnell')
     def on_match_all(self, peer, sender, bus,  topic, headers, message):
         ''' This method subscibes to all topics. It simply prints out the 
         topic seen.
         # '''
-        self.urls = [
-        self.url+'states/'+ self.entityId_transactive_component,
-        self.url+'states/'+ self.entityId_connectedDevices_component,
-        self.url+'states/'+ self.entityId_utilitySetting_component,
-        self.url+'states/'+ self.entityId_wholeHouseEnergy_component,
-        self.url+'states/'+ self.entityId_user_settings_component,
-        self.url+'states/'+ self.entityId_extras_component,
-        self.url+'states/'+ self.entityId_datPrivacy_component
-        ]
+	print("--------------------inside subscribe---------------------")
+        # request_data = (grequests.get(u,headers= {'Content-Type': 'application/json' ,'x-ha-access':self.password}) for u in self.urls)
+        response = self.apiResponse()
+        dataObject_transactive = json.loads(response[0].text) 
+        self.dataObject_connected = json.loads(response[1].text)
+        self.dataObject_utility_settings = json.loads(response[2].text)
+        self.dataObject_wholeHouse = json.loads(response[3].text)
+        self.dataObject_user_sett = json.loads(response[4].text)
+        self.dataObject_extras = json.loads(response[5].text)
+        self.dataObject_dataPrivacy = json.loads(response[6].text)
+        self.dataForward(self.dataObject_dataPrivacy)
+        
 
-        class ResponseObject:
-
-            # header = {'Content-Type': 'application/json' ,'x-ha-access':self.password}
-            request_data = (grequests.get(u,headers= {'Content-Type': 'application/json' ,'x-ha-access':self.password}) for u in self.urls)
-            response = grequests.map(request_data)
-            dataObject_transactive = json.loads(response[0].text) 
-            self.dataObject_connected = json.loads(response[1].text)
-            dataObject_utility_settings = json.loads(response[2].text)
-            dataObject_wholeHouse = json.loads(response[3].text)
-            dataObject_user_sett = json.loads(response[4].text)
-            dataObject_extras = json.loads(response[5].text)
-            dataObject_dataPrivacy = json.loads(response[6].text)
-
-        def save(object, filename, protocol = -1):
-            """Save an object to a compressed disk file.
-               Works well with huge objects.
-            """
-            file = gzip.GzipFile(filename, 'wb')
-            cPickle.dump(object, file, protocol)
-            file.close()
-
-        def load(filename):
-            """Loads a compressed object from disk
-            """
-            file = gzip.GzipFile(filename, 'rb')
-            object = cPickle.load(file)
-            file.close()
-            return object
-
-        o_new = ResponseObject()
-        if os.path.isfile('extrasObject.obj'):
-            self.o_saved = load('extrasObject.obj')
-            if (o_new.dataObject_extras != self.o_saved):
-                save(o_new.dataObject_extras,'extrasObject.obj')
-                self.o_saved = load('extrasObject.obj')
-                self.changeExtrasState(self.o_saved) 
-            else:
-                self.o_saved = load('extrasObject.obj')
-                self.changeExtrasState(self.o_saved)               
-        else:
-            save(o_new.dataObject_extras,'extrasObject.obj')
-            self.o_saved = load('extrasObject.obj')
-            self.changeExtrasState(self.o_saved) 
-
-        self.changePrivacyState(o_new.dataObject_dataPrivacy)
-        self.changeUtilitySettings(o_new.dataObject_utility_settings)
-
-        totalEnergy = 0
-        totalPower = 0
-        zone_max= 100
-        zone_min =0
         load_value =0
         energy_value =0
-        device_name = topic.partition('/')[-1].rpartition('/')[0].rpartition('/')[0].rpartition('/')[2]
+        device_name =topic.split("/")[3]
+	print(device_name)
 
-        with open('/home/yingying/Desktop/5.0RC/volttron/examples/TransactiveAgent/config_devices') as device_file: 
-            device_dictionary = json.load(device_file)
-        self.changeUsereSettings(device_dictionary)
+        # device_name = topic.partition('/')[-1].rpartition('/')[0].rpartition('/')[0].rpartition('/')[2]
+        if (topic == "devices/Yarnell/Energy/WholeHouse/all"):
+	    print("================inside second ====================")
+            self.totalEnergy =  float(message[0]['value'])
+            self.totalPower = float(self.totalEnergy)/60
+            # print(self.totalEnergy)
+            # print(self.totalPower)
+            # print("========================")
 
         if (device_name in self.deviceList):
-            if (topic == 'devices/all/'+ device_name +'/office/skycentrics'):
-                print(device_name)
+
+            if (topic.startswith("devices/Yarnell")):
+                print(topic)
                 now = datetime.datetime.now()
                 timestamp = now.isoformat()
                 for device in  self.deviceList:
                     if (device_name == device):
-                        if (message[0]['InstantaneousElectricityConsumption']):
-                            load_value = round(message[0]['InstantaneousElectricityConsumption'],2)
+                        load_value =0
+                        energy_value =0
+                        if (topic == "devices/Yarnell/Energy/"+device_name + '/all'):
+			    print("=============HERE")
+			    print(message)
+                            energy_value = float(message[0]['value'])
                         else :
-                            load_value = 0
-
-                        if (message[0]['TotalEnergyStorageCapacity']):
-                            energy_value = round(message[0]['TotalEnergyStorageCapacity'],2)
+                            energy_value = 0 
+                        if (topic == "devices/Yarnell/Power/" +device_name + "/all"):
+                            load_value = float(message[0]['value'])
                         else :
-                            energy_value = 0
+                            load_value = 0 
                         # self.populateDict(device_name,energy_value,load_value)
-
-                    else :
-                        load_value = float(self.dataObject_connected['attributes']['devices'][str(device)]['power'])
-                        energy_value = float(self.dataObject_connected['attributes']['devices'][str(device)]['energy'])
                         self.energyPoint[str(device)].append(energy_value)
                         self.powerPoint[str(device)].append(load_value)
-                        # self.populateDict(device,energy_value,load_value)
+                    else :
+                        load_value =0 
+                        energy_value = 0
+                        # load_value = float(self.dataObject_connected['attributes']['devices'][str(device)]['power'])
+                        # energy_value = float(self.dataObject_connected['attributes']['devices'][str(device)]['energy'])
+
+
 
                     flexibility = self.dataObject_connected['attributes']['devices'][str(device)]['flexibility']
                     participation = self.dataObject_connected['attributes']['devices'][str(device)]['participate']
                     reset = self.dataObject_connected['attributes']['devices'][str(device)]['reset']
                     device_json = {
                         "name":str(device),
-                        "energy":energy_value,
                         "flexibility":flexibility,
                         "participate": participation,
-                        "power":load_value,
-                        "reset":reset,
-                        "zone_max":zone_max,
-                        "zone_min":zone_min
+                        "reset":reset
                         }
                     devicesEnergyStatus_json = {
-                        "points": self.energyPoint[str(device_name)],
-                        "name": str(device_name)
+                        "name": device_name,
+                        "points": self.energyPoint[str(device_name)]
                     }
                     devicesPowerStatus_json = {
-                        "points": self.powerPoint[str(device_name)],
-                        "name": str(device_name)
+                        "name" : device_name,
+                        "points": self.powerPoint[str(device_name)]
                     }
+
+
                     self.devicePowerStausesDict[device_name] = devicesPowerStatus_json
                     self.deviceEnergyStausesDict[device_name] = devicesEnergyStatus_json
                     if (len(self.deviceEnergyStausesDict[device_name]) == 11):     
@@ -310,25 +421,31 @@ class TransactiveAgent(Agent):
                     self.energyDevicesStatusesDict['series']= self.deviceEnergyStausesDict      
                     self.powerDevicesStatusesDict['series']= self.devicePowerStausesDict
                     self.deviceDictionary[device]= device_json
-                    totalEnergy += energy_value
-                    totalPower += load_value
-                
+                    # totalEnergy += energy_value
+                    # totalPower += load_value
+		print(self.deviceDictionary)
                 self.energyDict['series']['actual']['line-style'] = ""
                 if (self.energyDict['series']['actual']['points'][self.count] == None):
-                    self.energyDict['series']['actual']['points'][self.count] =round(totalEnergy,2)
-                    self.energyDict['series']['transactive']['points'][self.count] =round(totalEnergy,2)
+                    self.energyDict['series']['actual']['points'][self.count] =round(self.totalEnergy,2)
+                    self.energyDict['series']['transactive']['points'][self.count] =round(self.totalEnergy,2)
                     print("the first entry deleted")
                 energyDataPlot = {
                     "series":self.energyDict['series'],
                     "time-format": "MM/DD",
                     "times":self.energyDict['times']
                 }
+#		print(self.energyDict)
                 if (self.count == 50):
                     self.count=0
                 self.count = self.count + 1
-                gevent.sleep(10)
+                gevent.sleep(1)
                 self.changeConnectedDevicesState(self.deviceDictionary)
-                self.changeTransactiveState(round(totalEnergy,2),round(totalPower,2),energyDataPlot,flexibility,zone_max,zone_min)
+                self.changePrivacyState(self.dataObject_dataPrivacy)
+                self.changeUtilitySettings(self.dataObject_utility_settings)
+                self.changeExtrasState(self.dataObject_extras) 
+
+#                self.ChangeTransactiveState(round(self.totalEnergy,2),round(self.totalPower,2),energyDataPlot,flexibility)
+                
                 self.startTime =datetime.datetime.utcnow()
                 if (datetime.datetime.utcnow() >= self.future):
                     self.setTime(self.energyDevicesStatusesDict,self.powerDevicesStatusesDict,timestamp)
@@ -341,39 +458,36 @@ class TransactiveAgent(Agent):
         if (len(powerDevicesStatusesDict['times']) == 11):
             del (powerDevicesStatusesDict['times'][0])
         self.future = datetime.datetime.utcnow() + timedelta(seconds=30,minutes=0)
-        self.changeDeviceStatuses(energyDevicesStatusesDict,powerDevicesStatusesDict)
-
-# self.changePrivacyState(o_new.dataObject_dataPrivacy)
+        self.ChangeDeviceStatuses(energyDevicesStatusesDict,powerDevicesStatusesDict)
 
     def changePrivacyState(self,privacyValues):
 
-                if self.entityId_datPrivacy_component is None:
-                    return
-                
-                urlServices = self.url+'states/'+ self.entityId_datPrivacy_component
-                try:
-                    jsonMsg = json.dumps(privacyValues)
-                    header = {'Content-Type': 'application/json' ,'x-ha-access':self.password}
-                    requests.post(urlServices, data = jsonMsg, headers = header)
-                    print("Privacy State has been changed")
-                except ValueError:
-                        pass
+        if self.entityId_datPrivacy_component is None:
+            return
+        
+        urlServices = self.url+'states/'+ self.entityId_datPrivacy_component
+        try:
+            jsonMsg = json.dumps(privacyValues)
+            header = {'Content-Type': 'application/json' ,'x-ha-access':self.password}
+            requests.post(urlServices, data = jsonMsg, headers = header)
+            # print("Privacy State has been changed")
+        except ValueError:
+                pass
 
     def changeExtrasState(self,objectExtras):
 
-            if self.entityId_extras_component is None:
-                return
-            
-            urlServices = self.url+'states/'+ self.entityId_extras_component
-            try:
-                jsonMsg = json.dumps(objectExtras)
-                header = {'Content-Type': 'application/json' ,'x-ha-access':self.password}
-                requests.post(urlServices, data = jsonMsg, headers = header)
-                print("Extras State has been changed")
-            except ValueError:
-                    pass
-
-    def changeTransactiveState(self,overall_energy,overall_power,energyDataPlot,flexibility,zone_max,zone_min):
+        if self.entityId_extras_component is None:
+            return
+        
+        urlServices = self.url+'states/'+ self.entityId_extras_component
+        try:
+            jsonMsg = json.dumps(objectExtras)
+            header = {'Content-Type': 'application/json' ,'x-ha-access':self.password}
+            requests.post(urlServices, data = jsonMsg, headers = header)
+            # print("Extras State has been changed")
+        except ValueError:
+                pass
+    def ChangeTransactiveState(self,overall_energy,overall_power,energyDataPlot,flexibility):
 
         if self.entityId_transactive_component is None:
             return
@@ -407,8 +521,8 @@ class TransactiveAgent(Agent):
                         "overallflexibility":[
                         {
                             "flexibility" : flexibility,
-                            "zone_max" : zone_max,
-                            "zone_min" : zone_min
+                            "zone_max" : 100,
+                            "zone_min" : 0
                         }],
                         "progress_bar":{
                             "comparisonLabel": "savings compared to last year",
@@ -425,7 +539,7 @@ class TransactiveAgent(Agent):
                 })
             header = {'Content-Type': 'application/json' ,'x-ha-access':self.password}
             requests.post(urlServices, data = jsonMsg, headers = header)
-            print("Transactive State has been changed")
+            # print("Transactive State has been changed")
         except ValueError:
                 pass
 
@@ -433,7 +547,6 @@ class TransactiveAgent(Agent):
 
             if self.entityId_connectedDevices_component is None:
                 return
-            print(device_json)
             urlServices = self.url+'states/'+ self.entityId_connectedDevices_component
             try:
                 jsonMsg = json.dumps({
@@ -445,11 +558,11 @@ class TransactiveAgent(Agent):
                     })
                 header = {'Content-Type': 'application/json' ,'x-ha-access':self.password}
                 requests.post(urlServices, data = jsonMsg, headers = header)
-                print("Connected Devices State has been changed")
+                # print("Connected Devices State has been changed")
             except ValueError:
                     pass
 
-    def changeDeviceStatuses(self,energyDevicesStatusesDict,powerDevicesStatusesDict):
+    def ChangeDeviceStatuses(self,energyDevicesStatusesDict,powerDevicesStatusesDict):
             
             if self.entityId_deviceStatus_component is None:
                 return
@@ -480,11 +593,9 @@ class TransactiveAgent(Agent):
                         },
                         "state": self.new_state
                     })
-                print("inde the bar graph thingy")
-                print(jsonMsg)
                 header = {'Content-Type': 'application/json','x-ha-access':self.password}
                 requests.post(urlServices, data = jsonMsg, headers = header)
-                print(" Devices Statuses State has been changed")
+                # print(" Devices Statuses State has been changed")
             except ValueError:
                     pass
 
@@ -498,7 +609,7 @@ class TransactiveAgent(Agent):
                 jsonMsg = json.dumps(utilitySettings)
                 header = {'Content-Type': 'application/json','x-ha-access':self.password}
                 requests.post(urlServices, data = jsonMsg, headers = header)
-                print("Advanced Setting State has been changed")
+                # print("Advanced Setting State has been changed")
             except ValueError:
                     pass
 
@@ -516,7 +627,7 @@ class TransactiveAgent(Agent):
                     })
                 header = {'Content-Type': 'application/json','x-ha-access':self.password}
                 requests.post(urlServices, data = jsonMsg, headers = header)
-                print("Advanced Setting State has been changed")
+                # print("Advanced Setting State has been changed")
             except ValueError:
                     pass
 
@@ -537,4 +648,7 @@ if __name__ == '__main__':
 
 
 
+
+
    
+
