@@ -58,12 +58,6 @@ from volttron.platform.vip.agent import Core, Agent
 from volttron.platform.agent.base_historian import BaseHistorian
 from volttron.platform.agent import utils
 from volttron.platform.messaging import topics, headers as headers_mod
-# from market_clear_ideal_accurate_1AC import market_clear_ideal_accurate_1AC
-# from AC_Temp_control import AC_Temp_control
-# from AC_Tset_control_ideal import AC_Tset_control_ideal
-# from AC_Status_update import AC_Status_update
-# from AC_flexibility_prediction import AC_flexibility_prediction
-
 
 
 
@@ -212,6 +206,8 @@ def hems_dr(config_path, **kwargs):
             ETP_b_on_AC_dn = (U_A * T_out + np.tile(0.5 * Q_i[ih], (1, Dtimes))[0] + Q_s_range +
                               np.tile(Q_h[ih], (1, Dtimes))[0]) / C_a
             ETP_b_off_AC_dn = (U_A * T_out + np.tile(0.5 * Q_i[ih], (1, Dtimes))[0] + Q_s_range) / C_a
+
+
             self.DRStart(Dtimes,ETP_a_AC_dn,ETP_b_on_AC_dn,ETP_b_off_AC_dn,mdt,ddt,P_avg,P_sigma,hr_start,hr_stop,T_a,T_out,Power,para_AC_dn,P_cap,Dtemp_AC_dn,halfband_AC_dn,Dstatus_AC_dn,P_bid_AC_dn,P_min_AC_dn,P_max_AC_dn,Q_min_AC_dn,Q_max_AC_dn,P_min,P_max,Q_min,Q_max,P_clear,Q_clear,Q_uc_avg,Q_lim,T_set_AC_dn,uncontrolled,Q_actual_AC_dn,Q_actual,P_actual,Q_uc,factor_AC_dn,P_h,Mtimes,Q_actual_AC_dn_avg,Q_actual_avg,P_actual_avg)
 
 
