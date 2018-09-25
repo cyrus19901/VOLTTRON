@@ -61,16 +61,14 @@ for use in subscriptions instead of hardcoding them.
 
 def subscriber_agent(config_path, **kwargs):
     config = utils.load_config(config_path)
+
     oat_point= config.get('oat_point',
-                          'devices/Building/LAB/Device/OutsideAirTemperature')
+                          'analysis/controls/ecobeeCurrent/currentTemp/currentTemp')
     mixed_point= config.get('mixed_point',
-                            'devices/Building/LAB/Device/MixedAirTemperature')
+                            'devices/LabHomes/controlsHome/campbell-TC-B/Solar Outside Modbus')
     damper_point= config.get('damper_point',
-                             'devices/Building/LAB/Device/DamperSignal')
-    all_topic = config.get('all_topic', 
-                           'devices/Building/LAB/Device/all')
-    query_point= config.get('query_point',
-                            'Building/LAB/Device/OutsideAirTemperature')
+                             'devices/LabHomes/controlsHome/campbell-TC-B/Outside Air Temperature RH')
+
     
     
     class ExampleSubscriber(Agent):
@@ -90,83 +88,83 @@ def subscriber_agent(config_path, **kwargs):
     
     
 
-        @PubSub.subscribe('pubsub', all_topic)
-        def match_device_all(self, peer, sender, bus,  topic, headers, message):
-            '''
-            This method subscribes to all points under a device then pulls out 
-            the specific point it needs.
-            The first element of the list in message is a dictionairy of points 
-            under the device. The second element is a dictionary of metadata for points.
-            '''
+        # @PubSub.subscribe('pubsub', all_topic)
+        # def match_device_all(self, peer, sender, bus,  topic, headers, message):
+        #     '''
+        #     This method subscribes to all points under a device then pulls out 
+        #     the specific point it needs.
+        #     The first element of the list in message is a dictionairy of points 
+        #     under the device. The second element is a dictionary of metadata for points.
+        #     '''
                        
-            print("Whole message", message)
+        #     print("Whole message", message)
             
-            #The time stamp is in the headers
-            print('Date', headers['Date'])
+        #     #The time stamp is in the headers
+        #     print('Date', headers['Date'])
             
-            #Pull out the value for the point of interest
-            print("Value", message[0]['OutsideAirTemperature'])
+        #     #Pull out the value for the point of interest
+        #     print("Value", message[0]['OutsideAirTemperature'])
             
-            #Pull out the metadata for the point
-            print('Unit', message[1]['OutsideAirTemperature']['units'])
-            print('Timezone', message[1]['OutsideAirTemperature']['tz'])
-            print('Type', message[1]['OutsideAirTemperature']['type'])
+        #     #Pull out the metadata for the point
+        #     print('Unit', message[1]['OutsideAirTemperature']['units'])
+        #     print('Timezone', message[1]['OutsideAirTemperature']['tz'])
+        #     print('Type', message[1]['OutsideAirTemperature']['type'])
            
 
     
-        @PubSub.subscribe('pubsub', oat_point)
-        def on_match_OAT(self, peer, sender, bus,  topic, headers, message):
-            '''
-            This method subscribes to the specific point topic.
-            For these topics, the value is the first element of the list 
-            in message.
-            '''
+        # @PubSub.subscribe('pubsub', oat_point)
+        # def on_match_OAT(self, peer, sender, bus,  topic, headers, message):
+        #     '''
+        #     This method subscribes to the specific point topic.
+        #     For these topics, the value is the first element of the list 
+        #     in message.
+        #     '''
             
-            print("Whole message", message)
-            print('Date', headers['Date'])
-            print("Value", message[0])
-            print("Units", message[1]['units'])
-            print("TimeZone", message[1]['tz'])
-            print("Type", message[1]['type'])
+        #     print("Whole message", message)
+        #     print('Date', headers['Date'])
+        #     print("Value", message[0])
+        #     print("Units", message[1]['units'])
+        #     print("TimeZone", message[1]['tz'])
+        #     print("Type", message[1]['type'])
             
     
-        @PubSub.subscribe('pubsub', '')
-        def on_match_all(self, peer, sender, bus,  topic, headers, message):
-            ''' This method subscibes to all topics. It simply prints out the 
-            topic seen.
-            '''
+        # @PubSub.subscribe('pubsub', '')
+        # def on_match_all(self, peer, sender, bus,  topic, headers, message):
+        #     ''' This method subscibes to all topics. It simply prints out the 
+        #     topic seen.
+        #     '''
             
-            print(topic)
+        #     print(topic)
 #     
         # Demonstrate periodic decorator and settings access
-        @Core.periodic(10)
-        def lookup_data(self):
-            '''
-            This method demonstrates how to query the platform historian for data
-            This will require that the historian is already running on the platform.
-            '''
+#         @Core.periodic(10)
+#         def lookup_data(self):
+#             '''
+#             This method demonstrates how to query the platform historian for data
+#             This will require that the historian is already running on the platform.
+#             '''
             
-            try: 
+#             try: 
                 
-                result = self.vip.rpc.call(
-                                           #Send this message to the platform historian
-                                           #Using the reserved ID
-                                           'platform.historian', 
-                                           #Call the query method on this agent
-                                           'query', 
-                                           #query takes the keyword arguments of:
-                                           #topic, then optional: start, end, count, order
-#                                            start= "2015-10-14T20:51:56",
-                                           topic=query_point,
-                                           count = 20,
-                                           #RPC uses gevent and we must call .get(timeout=10)
-                                           #to make it fetch the result and tell 
-                                           #us if there is an error
-                                           order = "FIRST_TO_LAST").get(timeout=10)
-                print('Query Result', result)
-            except Exception as e:
-                print ("Could not contact historian. Is it running?")
-                print(e)
+#                 result = self.vip.rpc.call(
+#                                            #Send this message to the platform historian
+#                                            #Using the reserved ID
+#                                            'platform.historian', 
+#                                            #Call the query method on this agent
+#                                            'query', 
+#                                            #query takes the keyword arguments of:
+#                                            #topic, then optional: start, end, count, order
+# #                                            start= "2015-10-14T20:51:56",
+#                                            topic=query_point,
+#                                            count = 20,
+#                                            #RPC uses gevent and we must call .get(timeout=10)
+#                                            #to make it fetch the result and tell 
+#                                            #us if there is an error
+#                                            order = "FIRST_TO_LAST").get(timeout=10)
+#                 print('Query Result', result)
+#             except Exception as e:
+#                 print ("Could not contact historian. Is it running?")
+#                 print(e)
 
         @Core.periodic(10)
         def pub_fake_data(self):
@@ -176,23 +174,11 @@ def subscriber_agent(config_path, **kwargs):
             This method can be removed if you have real data to work against.
             '''
             
-            #Make some random readings
-            oat_reading = random.uniform(30,100)
-            mixed_reading = oat_reading + random.uniform(-5,5)
-            damper_reading = random.uniform(0,100)
-            
-            # Create a message for all points.
-            all_message = [{'OutsideAirTemperature': oat_reading, 'MixedAirTemperature': mixed_reading, 
-                        'DamperSignal': damper_reading},
-                       {'OutsideAirTemperature': {'units': 'F', 'tz': 'UTC', 'type': 'float'},
-                        'MixedAirTemperature': {'units': 'F', 'tz': 'UTC', 'type': 'float'}, 
-                        'DamperSignal': {'units': '%', 'tz': 'UTC', 'type': 'float'}
-                        }]
-            
+
             #Create messages for specific points
-            oat_message = [oat_reading,{'units': 'F', 'tz': 'UTC', 'type': 'float'}]
-            mixed_message = [mixed_reading,{'units': 'F', 'tz': 'UTC', 'type': 'float'}]
-            damper_message = [damper_reading,{'units': '%', 'tz': 'UTC', 'type': 'float'}]
+            temp_message = [60,{'units': 'F', 'tz': 'UTC', 'type': 'float'}]
+            solar_message = [500,{'units': 'F', 'tz': 'UTC', 'type': 'float'}]
+            outside_message = [71,{'units': '%', 'tz': 'UTC', 'type': 'float'}]
             
             #Create timestamp
             now = datetime.utcnow().isoformat(' ') + 'Z'
@@ -201,17 +187,15 @@ def subscriber_agent(config_path, **kwargs):
             }
             
             #Publish messages
-            self.vip.pubsub.publish(
-                'pubsub', all_topic, headers, all_message)
             
             self.vip.pubsub.publish(
-                'pubsub', oat_point, headers, oat_message)
+                'pubsub', 'analysis/controls/ecobeeCurrent/currentTemp/currentTemp', headers, temp_message)
             
             self.vip.pubsub.publish(
-                'pubsub', mixed_point, headers, mixed_message)
+                'pubsub', 'devices/LabHomes/controlsHome/campbell-TC-B/Solar Outside Modbus', headers, solar_message)
             
             self.vip.pubsub.publish(
-                'pubsub', damper_point, headers, damper_message)
+                'pubsub', 'devices/LabHomes/controlsHome/campbell-TC-B/Outside Air Temperature RH', headers, outside_message)
             
 
 
