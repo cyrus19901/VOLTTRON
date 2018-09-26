@@ -37,7 +37,7 @@
 # }}}
 from __future__ import absolute_import, print_function
 
-import datetime
+from datetime import datetime
 import errno
 import inspect
 import logging
@@ -71,68 +71,39 @@ __version__ = '3.0'
 def hems_dr(config_path, **kwargs):
 
     config = utils.load_config(config_path)
-    tf = config.get('tf', None)
-    ddt = config.get('ddt', None)
+    tf = config.get('tf')
+    ddt = config.get('ddt')
     Dtimestamps = (tf - ddt) / ddt + 1
     Dtimes = int(Dtimestamps)
-    mdt = config.get('mdt', None)
+    mdt = config.get('mdt')
     Mtimes = int(Dtimes / (mdt / ddt))
-    uncontrolled = config.get('uncontrolled', None)
+    uncontrolled = config.get('uncontrolled')
     para_AC_dn = {}
     values = {'a', 'b', 'c', 'd', 'e', 'f'}
-    para_AC_dn['ratio'] = config.get('para-ratio', None)
-    para_AC_dn['Tdesired'] = config.get('para-Tdesired', None)
-    para_AC_dn['Tmin'] = config.get('para-Tmin', None)
-    para_AC_dn['Tmax'] = config.get('para-Tmax', None)
+    para_AC_dn['ratio'] = config.get('para-ratio')
+    para_AC_dn['Tdesired'] = config.get('para-Tdesired')
+    para_AC_dn['Tmin'] = config.get('para-Tmin')
+    para_AC_dn['Tmax'] = config.get('para-Tmax')
     # para_AC_dn['power'] = config.get('para-power', None)
-    para_AC_dn['COP'] = config.get('para-COP', None)
-    hr_start = config.get('hr_start', None)
-    hr_stop = config.get('hr_stop', None)
-    Q_lim = config.get('Q_lim', None)
-    P_cap = config.get('P_cap', None)
-    U_A = config.get('U_A', None)
-    C_a = config.get('C_a', None)
-    halfband_AC_dn_above =  config.get('halfband_AC_dn_above', None)
-    halfband_AC_dn_below =  config.get('halfband_AC_dn_below', None)
-    Q_i = config.get('Q_i', None) 
-    Delta = config.get('delta', None)
-    Dstatus_AC_dn_extract = np.zeros((1, Dtimes))
-    Dstatus_AC_dn = Dstatus_AC_dn_extract[0]
-    Dtemp_AC_dn_extract = np.zeros((1, Dtimes))
-    Dtemp_AC_dn = Dtemp_AC_dn_extract[0]
+    para_AC_dn['COP'] = config.get('para-COP')
+    hr_start = config.get('hr_start')
+    hr_stop = config.get('hr_stop')
+    Q_lim = config.get('Q_lim')
+    percentage = config.get('percentage')
+    P_cap = config.get('P_cap')
+    U_A = config.get('U_A')
+    C_a = config.get('C_a')
+    halfband_AC_dn_above =  config.get('halfband_AC_dn_above')
+    halfband_AC_dn_below =  config.get('halfband_AC_dn_below')
+    Q_i = config.get('Q_i') 
+    Delta = config.get('delta')
     Dtimestamps = np.arange(0, tf - ddt, ddt)
     Dtimestamps = np.insert(Dtimestamps, len(Dtimestamps), 23.9917)
     Q_uc =0 
     Q_uc_avg =0
     ## Initialize
-
-    P_clear = np.zeros((1, Mtimes))[0]
-    Q_clear = np.zeros((1, Mtimes))[0]
-
-    Q_actual = np.zeros((1, Dtimes))[0]
-    Q_actual_avg = np.zeros((1, Mtimes))[0]
-    P_actual = np.zeros((1, Dtimes))[0]
-    P_actual_avg = np.zeros((1, Mtimes))[0]
-
-    factor_AC_dn = np.zeros((1, Dtimes))[0]
-    Q_actual_AC_dn = np.zeros((1, Dtimes))[0]
-    Q_actual_AC_dn_avg = np.zeros((1, Mtimes))[0]
-
-    P_bid_AC_dn = np.zeros((1, Mtimes))[0]
-    P_min_AC_dn = np.zeros((1, Mtimes))[0]
-    P_max_AC_dn = np.zeros((1, Mtimes))[0]
-    Q_min_AC_dn = np.zeros((1, Mtimes))[0]
-    Q_max_AC_dn = np.zeros((1, Mtimes))[0]
-    Q_clear_AC_dn = np.zeros((1, Mtimes))[0]
-
-    T_set_AC_dn = np.zeros((1, Mtimes))[0]
-
-    P_max = np.zeros((1, Mtimes))[0]
-    P_min = np.zeros((1, Mtimes))[0]
-    Q_min = np.zeros((1, Mtimes))[0]
-    Q_max = np.zeros((1, Mtimes))[0]
-    print("***********************")
-    # halfband_AC_dn = config.get('halfband_AC_dn', None)
+    P_avg = 0.15
+    P_sigma =  0.01 
 
     class HemsDR(Agent):
         '''This is a simple example of a historian agent that writes stuff
@@ -157,104 +128,84 @@ def hems_dr(config_path, **kwargs):
                 self.Q_s = message[0]
             if (topic == 'devices/LabHomes/controlsHome/campbell-TC-B/Outside Air Temperature RH'): 
                 self.T_out = message[0]
+            if (topic == 'devices/LabHomes/controlsHome/campbell-PW-B/Heat Pump Total Power'): 
+                self.HP_power = message[0]
+            if (topic == 'ControlsHouse/AC/participate'):
+                self.DR = message[0]
 
-            # if (topic == 'ControlsHouse/AC/participate'):
-            #     if message[0] == True:
+            self.HP_power = 1500
+            self.DR = True
             self.power = (0.1865 * pow(self.T_out,2)) - (10.49*self.T_out) + 1439.1
             Q_h = -para_AC_dn['COP'] * self.power
-            ETP_a_AC_dn = (-U_A) / C_a
-            Q_s_range = 0.5 * self.Q_s
-            ETP_b_on_AC_dn = (U_A * self.T_out + np.tile(0.5 * Q_i, (1, Dtimes))[0] + Q_s_range +
+            self.ETP_a_AC_dn = (-U_A) / C_a
+            self.Q_s_range = 0.5 * self.Q_s
+            self.Q_limvalue = (self.HP_power * percentage) /100
+            self.ETP_b_on_AC_dn = (U_A * self.T_out + np.tile(0.5 * Q_i, (1, Dtimes))[0] + self.Q_s_range +
                               np.tile(Q_h, (1, Dtimes))[0]) / C_a
-            ETP_b_off_AC_dn = (U_A * self.T_out + np.tile(0.5 * Q_i, (1, Dtimes))[0] + Q_s_range) / C_a
-            P_avg = 0.15
-            P_sigma =  0.01 
-            self.DRStart(Dtimes,ETP_a_AC_dn,ETP_b_on_AC_dn,ETP_b_off_AC_dn,mdt,ddt,P_avg,P_sigma,hr_start,hr_stop,self.T_a,self.T_out,self.power,para_AC_dn,P_cap,Dtemp_AC_dn,halfband_AC_dn_above,halfband_AC_dn_below,Dstatus_AC_dn,P_bid_AC_dn,P_min_AC_dn,P_max_AC_dn,Q_min_AC_dn,Q_max_AC_dn,P_min,P_max,Q_min,Q_max,P_clear,Q_clear,Q_uc_avg,Q_lim,T_set_AC_dn,uncontrolled,Q_actual_AC_dn,Q_actual,P_actual,Q_uc,factor_AC_dn,Mtimes,Q_actual_AC_dn_avg,Q_actual_avg,P_actual_avg,self.Q_s)
+            self.ETP_b_off_AC_dn = (U_A * self.T_out + np.tile(0.5 * Q_i, (1, Dtimes))[0] + self.Q_s_range) / C_a
+
+        @Core.periodic(300)
+        def DRStartController(self):
+            if (self.DR == True):
+
+                A_ETP_AC_dn = self.ETP_a_AC_dn
+                B_ETP_ON_AC_dn = self.ETP_b_on_AC_dn
+                B_ETP_OFF_AC_dn = self.ETP_b_off_AC_dn
+                A = 1.0012
+                B = -1.5378e-03
+                C = -2.7438e-06
+                D = 8.840e-05
+                Q_i = 3.5813e-03 #this is will Qunknown
+
+                if (self.HP_power < 50):
+                    Dstatus_AC_dn = 1
+                else:
+                    Dstatus_AC_dn = 0
+
+                AC_flexibility = self.AC_flexibility_prediction(P_avg, P_sigma, P_cap, para_AC_dn,
+                                                                self.T_a,
+                                                                halfband_AC_dn_above,halfband_AC_dn_below, Dstatus_AC_dn, mdt, A, B,
+                                                                C,D, self.T_out, Q_i, self.Q_s,-8616.29,ddt)
+                P_bid_AC_dn = AC_flexibility[0]
+                P_min_AC_dn = AC_flexibility[1]
+                P_max_AC_dn = AC_flexibility[2]
+                Q_min_AC_dn = AC_flexibility[3]
+                Q_max_AC_dn = AC_flexibility[4]
+
+                P_min = P_min_AC_dn
+                P_max = P_max_AC_dn
+                Q_min = Q_min_AC_dn
+                Q_max = Q_max_AC_dn
+                market_clear = self.market_clear_ideal_accurate_1AC(P_min, P_max, Q_max, Q_min,
+                                                                   P_avg, P_cap, Q_uc_avg, self.Q_limvalue)
+
+                P_clear = market_clear[0]
+                Q_clear = market_clear[1]
+                T_set_AC_dn = self.AC_Tset_control_ideal(P_clear, P_avg, P_sigma, para_AC_dn)
+                self.publishValue(T_set_AC_dn)
 
 
 
 
-        def DRStart(self,Dtimes,ETP_a_AC_dn,ETP_b_on_AC_dn,ETP_b_off_AC_dn,mdt,ddt,P_avg,P_sigma,hr_start,hr_stop,T_a,T_out,power,para_AC_dn,P_cap,Dtemp_AC_dn,halfband_AC_dn_above,halfband_AC_dn_below,Dstatus_AC_dn,P_bid_AC_dn,P_min_AC_dn,P_max_AC_dn,Q_min_AC_dn,Q_max_AC_dn,P_min,P_max,Q_min,Q_max,P_clear,Q_clear,Q_uc_avg,Q_lim,T_set_AC_dn,uncontrolled,Q_actual_AC_dn,Q_actual,P_actual,Q_uc,factor_AC_dn,Mtimes,Q_actual_AC_dn_avg,Q_actual_avg,P_actual_avg,Q_s):
-
-            for k in range(0, Dtimes-1):
-                A_ETP_AC_dn = ETP_a_AC_dn
-                B_ETP_ON_AC_dn = ETP_b_on_AC_dn[k]
-                B_ETP_OFF_AC_dn = ETP_b_off_AC_dn[k]
-                val = 0
-                if ((k % (mdt / ddt)) == 0):
-                    im = int((math.floor(k / mdt * ddt - 1)))
-                    if ((k >= (hr_start / ddt)) and (k <= (hr_stop / ddt))):
-                        im = im
-                        # values = self.AC_model_calibration(T_a, T_out, power, para_AC_dn['COP'], ddt, k)
-                        A = 1.0012
-                        B = -1.5378e-03
-                        C = -2.7438e-06
-                        D = 8.840e-05
-                        # Q_s = 500
-                        Q_i = 3412
-
-                        AC_flexibility = self.AC_flexibility_prediction(P_avg, P_sigma, P_cap, para_AC_dn,
-                                                                        Dtemp_AC_dn[k],
-                                                                        halfband_AC_dn_above,halfband_AC_dn_below, Dstatus_AC_dn[k], mdt, A, B,
-                                                                   C,D, T_out, Q_i, Q_s,-8616.29,ddt)
-                        P_bid_AC_dn[im] = AC_flexibility[0]
-                        P_min_AC_dn[im] = AC_flexibility[1]
-                        P_max_AC_dn[im] = AC_flexibility[2]
-                        Q_min_AC_dn[im] = AC_flexibility[3]
-                        Q_max_AC_dn[im] = AC_flexibility[4]
-
-                        P_min[im] = P_min_AC_dn[im]
-                        P_max[im] = P_max_AC_dn[im]
-                        Q_min[im] = Q_min_AC_dn[im]
-                        Q_max[im] = Q_max_AC_dn[im]
-
-                        market_clear = self.market_clear_ideal_accurate_1AC(P_min[im], P_max[im], Q_max[im], Q_min[im],
-                                                                       P_avg, P_cap, Q_uc_avg, Q_lim)
-
-                        P_clear[im] = market_clear[0]
-                        Q_clear[im] = market_clear[1]
-                        T_set_AC_dn[im] = self.AC_Tset_control_ideal(P_clear[im], P_avg, P_sigma, para_AC_dn)
-
-                    else:
-                        T_set_AC_dn[im] = para_AC_dn['Tdesired']
+            else :
+                self.NoDR()
+                
+        
+        def publishValue(self,value):
+            now = datetime.utcnow().isoformat(' ') + 'Z'
+            headers = {
+                headers_mod.DATE: now
+            }
+            T_set_AC_dn_message = [float(value),{'units': 'F','tz':'UTC','type':'float'}]
+            pub_topic = 'analysis/controls/ecobeeSet/TSetACdn'
+            self.vip.pubsub.publish('pubsub',pub_topic,headers,T_set_AC_dn_message).get(timeout=2)
 
 
-                    if uncontrolled:
-                        T_set_AC_dn[im] = para_AC_dn['Tdesired']
+        def NoDR(self):
 
-                    Dstatus_AC_dn[k] = self.AC_Status_update(Dtemp_AC_dn[k], halfband_AC_dn_above, T_set_AC_dn[im],
-                                                        Dstatus_AC_dn[k])
-                    Q_actual_AC_dn[k] = power * Dstatus_AC_dn[k]
-                    Q_actual[k] = Q_actual_AC_dn[k]
+            T_set_AC_dn = para_AC_dn['Tdesired']
 
-                P_actual[k] = Q_actual[k] + Q_uc
-                AC_attributes = self.AC_Temp_control(Dtemp_AC_dn[k], A_ETP_AC_dn, B_ETP_ON_AC_dn, B_ETP_OFF_AC_dn,
-                                                halfband_AC_dn_above,
-                                                T_set_AC_dn[im], Dstatus_AC_dn[k], ddt)
-
-                Dtemp_AC_dn[k + 1] = AC_attributes[0]
-                Dstatus_AC_dn[k + 1] = AC_attributes[1]
-                factor_AC_dn[k] = AC_attributes[2]
-                Q_actual_AC_dn[k] = Q_actual_AC_dn[k] + power * factor_AC_dn[k]
-                Q_actual[k] = Q_actual_AC_dn[k]
-                P_actual[k] = Q_actual[k] + Q_uc
-
-                Q_actual_AC_dn[k + 1] = power * Dstatus_AC_dn[k + 1]
-                Q_actual[k + 1] = Q_actual_AC_dn[k + 1]
-                P_actual[k + 1] = Q_actual[k + 1] + Q_uc
-
-            self.P_actualCalculate(Mtimes,Q_actual_AC_dn_avg,Q_actual_AC_dn,P_actual,Q_actual,Q_actual_avg,P_actual_avg,mdt)
-
-
-        def AC_model_calibration(self,T_a, T_out, power, COP, h, k):
-            internal_value_file = scipy.io.loadmat('/home/cyrus1990/Desktop/hems/volttron/examples/HEMS-Agent/HEMS/internal.mat')
-            A = 1 - (internal_value_file['U_A'][0][0]) / (internal_value_file['C_a'][0][0]) * h
-            B = (internal_value_file['U_A'][0][0]) / (internal_value_file['C_a'][0][0]) * h
-            C = h / (internal_value_file['C_a'][0][0])
-            D = C 
-            Q_i_val = (internal_value_file['Q_i'][0][0])
-            Q_s_val = internal_value_file['Q_s'][0][k]
-            return A, B, C,D, Q_s_val, Q_i_val
+            # if uncontrolled:
 
         def AC_compute_temp(self,A, B, C, D , T_out, Q_i, Q_s, Q_h, T_a, mdt, ddt):
 
@@ -518,8 +469,6 @@ def hems_dr(config_path, **kwargs):
                 Q_actual_AC_dn_avg[i] = np.average(Q_actual_AC_dn[ i*10 : (i*10)+10])
                 Q_actual_avg[i] = np.average(Q_actual[i * 10 : (i*10)+10])
                 P_actual_avg[i] = np.average(P_actual[i*10 : (i*10)+10])
-                print(T_set_AC_dn)
-                print("=============================================")
                 # print(P_actual_avg[i])
 
             avg_period = 0.25/mdt
