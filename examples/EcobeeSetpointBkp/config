@@ -1,0 +1,6 @@
+{
+
+    "agentid": "EcobeeSetpoint",
+    "message": "Message from HEMS",
+    "HEMS_signal": "analysis/controls/ecobeeSet/TSetACdn" 
+}

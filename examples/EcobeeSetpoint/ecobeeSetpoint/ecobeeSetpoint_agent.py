@@ -42,6 +42,7 @@ from datetime import datetime
 import logging
 import random
 import sys
+import math
 import json
 import requests
 from pprint import pprint
@@ -64,7 +65,8 @@ for use in subscriptions instead of hardcoding them.
 def ecobeeSetpoint_agent(config_path, **kwargs):
     config = utils.load_config(config_path)
     HEMS_signal= config.get('HEMS_signal',
-                          'analysis/HEMS/setpoint/value')
+                          'analysis/controls/ecobeeSet/TSetACdn')
+    # data_points = config.get('data_points')
     
     
     class EcobeeSetpoint(Agent):
@@ -76,61 +78,90 @@ def ecobeeSetpoint_agent(config_path, **kwargs):
         def setup(self, sender, **kwargs):
             # Demonstrate accessing a value from the config file
             self._agent_id = config['agentid']
+            self.data_points = config.get('data_points')
+            self.pos = 0
 
+        @Core.periodic(60)
+        def setPoints(self):
 
-        @PubSub.subscribe('pubsub', HEMS_signal)
-        def match_device_all(self, peer, sender, bus,  topic, headers, message):
-
-            with open('/home/pi/Homeassistant-updated/config/ecobee.conf') as f:
-                data = json.load(f)
-
-            access_token = data['ACCESS_TOKEN']
-            print(access_token)
-            pprint(data)
-            print("Whole message", message)
+            file = open('/home/pi/volttron/ecobee.conf','r')
+            file_data = file.read()
+            val = json.loads(file_data)
+            file.close()
+            access_token = val['ACCESS_TOKEN']
             URL= 'https://api.ecobee.com/1/thermostat?format=json'
             headers = {"content-type": "application/json","Authorization": "Bearer "+ access_token}
-            print(headers)
-	    setpoint= message[0]['Ecobeesetpoint'] * 10
-	    data =json.dumps({
+            print(headers) 
+            # while (pos <= len(self.data_points)):
+            data =json.dumps({
               "selection": {
                 "selectionType":"registered",
                 "selectionMatch":""
               },
               "functions": [
-                {
-                  "type":"setHold",
+                { "type" : "setHold",
                   "params":{
                     "holdType":"nextTransition",
-                    "heatHoldTemp":450,
-                    "coolHoldTemp":setpoint
+                    "heatHoldTemp":500,
+                    "coolHoldTemp":self.data_points[self.pos]
                   }
                 }
               ]
             })
-	    print(data)
-            print(message[0]['Ecobeesetpoint'])
+            #self.pos = self.pos+1 
+            print(data,self.pos)
+	    #self.pos = self.pos+1
+            if (self.pos == len(self.data_points)):
+                self.pos =0
+	    
             r = requests.post(url = URL, data = data, headers=headers)   
-            print(r.text)                         
-
-            
-
-        @Core.periodic(60)
-        def pub_fake_data(self):
-
-            #Create messages for specific points
-            #HEMS_point = [65,{'units': 'F', 'tz': 'UTC', 'type': 'float'}]
-            HEMS_point = [{'Ecobeesetpoint': 65},
-                       {'EcobeeSetpoint': {'units': 'F', 'tz': 'UTC', 'type': 'float'}}]            
-            #Create timestamp
-            now = datetime.utcnow().isoformat(' ') + 'Z'
+            print(r.text) 
+	    now = datetime.utcnow().isoformat(' ') + 'Z'
             headers = {
                 headers_mod.DATE: now
             }
-            
-            #Publish messages
+            message = [{'val':self.data_points[self.pos]},{'val':{'units': 'F', 'tz': 'UTC', 'type': 'float'}}]
+
             self.vip.pubsub.publish(
-                'pubsub', HEMS_signal, headers, HEMS_point)
+                'pubsub', 'analysis/controls/ecobeeTestsetpoint/val' , headers, message)
+	    
+	    self.pos = self.pos+1
+
+
+	
+#         @PubSub.subscribe('pubsub',HEMS_signal)
+#         def match_device_all(self, peer, sender, bus,  topic, headers, message):
+
+#             file = open('/home/pi/volttron/ecobee.conf','r')
+#             file_data = file.read()
+#             #print(json.dumps(file_data))
+# 	        val = json.loads(file_data)
+# 	        file.close()
+#             access_token = val['ACCESS_TOKEN']
+#             URL= 'https://api.ecobee.com/1/thermostat?format=json'
+#             headers = {"content-type": "application/json","Authorization": "Bearer "+ access_token}
+#             print(headers)
+# 	       #print(message[0]['setpoint'])	
+# 	        setpoint= message[0]['setpoint'] * 10
+#     	    data =json.dumps({
+#                   "selection": {
+#                     "selectionType":"registered",
+#                     "selectionMatch":""
+#                   },
+#                   "functions": [
+#                     { "type" : "setHold",
+#                       "params":{
+#                         "holdType":"nextTransition",
+#                         "heatHoldTemp":500,
+#                         "coolHoldTemp":int(round(setpoint))
+#                       }
+#                     }
+#                   ]
+#                 })
+# 	        print(data)
+# #            print(message[0]['Ecobeesetpoint'])
+#             r = requests.post(url = URL, data = data, headers=headers)   
+#             print(r.text)                         
             
             
 
@@ -147,4 +178,5 @@ def main(argv=sys.argv):
 if __name__ == '__main__':
     # Entry point for script
     sys.exit(main())
+
 

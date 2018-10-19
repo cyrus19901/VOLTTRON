@@ -89,6 +89,20 @@ def subscriber_agent(config_path, **kwargs):
             self._agent_id = config['agentid']
     
     
+	@PubSub.subscribe('pubsub', '')
+        def subscribeHouseValues(self, peer, sender, bus,  topic, headers, message):
+            if (topic == 'analysis/controls/ecobeeCurrent/currentTemp/currentTemp'):
+                tempValue = message
+                print(tempValue)
+
+        
+            if (topic == 'devices/LabHomes/controlsHome/campbell-TC-B/Solar Outside Modbus'):
+                solarValue = message
+                print(solarValue) 
+
+            if (topic == 'devices/LabHomes/controlsHome/campbell-TC-B/Outside Air Temperature RH'): 
+                OATValue = message
+                print(OATValue)
 
         @PubSub.subscribe('pubsub', all_topic)
         def match_device_all(self, peer, sender, bus,  topic, headers, message):

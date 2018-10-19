@@ -1,11 +1,7 @@
 {
 
-    "agentId": "EcobeeAgent",
-    "password":"pzM7^-K9%Bn=Azb",
-    "url":"https://130.20.213.181:8123/api/states/",
-    "urlPass":"NULL",
-    "friendly_name":"Transactive Home",
-    "message": "hello"
- 
+    "agentid": "EcobeeGetSetpoint",
+    "HEMS_signal": "analysis/controls/ecobeeSet/TSetACdn", 
+    "data_points": [52.1,53.2,54.3,55.4,56.5,67.6,58.7,59.8,60.9,61.11,62.12,63.13,64.14,65.15,66.16,67.17,68.18,69.19,70.25,71.26]
 }
 

@@ -5,7 +5,7 @@ export CONFIG=examples/EcobeeSetpoint/config
 export TAG=ecobeeSetpoint
 
 # Uncomment to make this agent the platform historian.
-#export AGENT_VIP_IDENTITY=platform.historian
+export AGENT_VIP_IDENTITY=ecobeeSetpointstatic
 
 ./scripts/core/make-agent.sh
 

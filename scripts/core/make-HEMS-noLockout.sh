@@ -1,11 +1,11 @@
 #!/usr/bin/env bash
-export SOURCE=examples/Ecobee/
-export CONFIG=examples/Ecobee/config
+export SOURCE=examples/HEMS-Agent-noLockout/
+export CONFIG=examples/HEMS-Agent-noLockout/HEMS.config
 
-export TAG=ecobeeGetSetpoint
+export TAG=HEMS-dr-nolockout
 
 # Uncomment to make this agent the platform historian.
-export AGENT_VIP_IDENTITY=getSetpoint
+export AGENT_VIP_IDENTITY=HEMS-nolockout
 
 ./scripts/core/make-agent.sh
 

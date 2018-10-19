@@ -2,5 +2,6 @@
 
     "agentid": "EcobeeSetpoint",
     "message": "Message from HEMS",
-    "HEMS_signal": "analysis/HEMS/setpoint/value" 
+    "HEMS_signal": "analysis/controls/ecobeeSet/TSetACdn", 
+    "data_points": [563.5,564.0,564.5,565.0,565.5,566.0,566.5]
 }

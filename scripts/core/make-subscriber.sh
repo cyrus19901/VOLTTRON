@@ -1,11 +1,11 @@
 #!/usr/bin/env bash
-export SOURCE=examples/Ecobee/
-export CONFIG=examples/Ecobee/config
+export SOURCE=examples/ExampleSubscriber/
+export CONFIG=examples/ExampleSubscriber/config
 
-export TAG=ecobeeGetSetpoint
+export TAG=subscriber
 
 # Uncomment to make this agent the platform historian.
-export AGENT_VIP_IDENTITY=getSetpoint
+#export AGENT_VIP_IDENTITY=platform.historian
 
 ./scripts/core/make-agent.sh
 
